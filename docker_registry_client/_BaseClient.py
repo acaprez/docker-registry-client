@@ -153,10 +153,13 @@ class BaseClientV2(CommonBaseClient):
 
     def __init__(self, *args, **kwargs):
         auth_service_url = kwargs.pop("auth_service_url", "")
+        registry_host = kwargs.pop("registry_host")
+        if registry_host is None:
+            registry_host = args[0]
         super(BaseClientV2, self).__init__(*args, **kwargs)
         self._manifest_digests = {}
         self.auth = AuthorizationService(
-            registry=self.host,
+            registry_host,
             url=auth_service_url,
             verify=self.method_kwargs.get('verify', False),
             auth=self.method_kwargs.get('auth', None),
@@ -262,7 +265,7 @@ class BaseClientV2(CommonBaseClient):
         path = url.format(**kwargs)
         logger.debug("%s %s", method.__name__.upper(), path)
         response = method(self.host + path,
-                          data=data, headers=header, **self.method_kwargs)
+                          data=data, headers=header)
         logger.debug("%s %s", response.status_code, response.reason)
         response.raise_for_status()
 
@@ -270,7 +273,8 @@ class BaseClientV2(CommonBaseClient):
 
 
 def BaseClient(host, verify_ssl=None, api_version=None, username=None,
-               password=None, auth_service_url="", api_timeout=None):
+               password=None, auth_service_url="", api_timeout=None,
+               registry_host=None):
     if api_version == 1:
         return BaseClientV1(
             host, verify_ssl=verify_ssl, username=username, password=password,
@@ -280,6 +284,7 @@ def BaseClient(host, verify_ssl=None, api_version=None, username=None,
         return BaseClientV2(
             host, verify_ssl=verify_ssl, username=username, password=password,
             auth_service_url=auth_service_url, api_timeout=api_timeout,
+            registry_host=registry_host
         )
     elif api_version is None:
         # Try V2 first
@@ -287,6 +292,7 @@ def BaseClient(host, verify_ssl=None, api_version=None, username=None,
         v2_client = BaseClientV2(
             host, verify_ssl=verify_ssl, username=username, password=password,
             auth_service_url=auth_service_url, api_timeout=api_timeout,
+            registry_host=registry_host
         )
         try:
             v2_client.check_status()
